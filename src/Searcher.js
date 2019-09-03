@@ -4,8 +4,12 @@ import LoadingError from 'libe-components/lib/blocks/LoadingError'
 import ShareArticle from 'libe-components/lib/blocks/ShareArticle'
 import LibeLaboLogo from 'libe-components/lib/blocks/LibeLaboLogo'
 import ArticleMeta from 'libe-components/lib/blocks/ArticleMeta'
+import Grid from 'libe-components/lib/layouts/Grid'
+import Slot from 'libe-components/lib/layouts/Slot'
+import PageTitle from 'libe-components/lib/text-levels/PageTitle'
+import Paragraph from 'libe-components/lib/text-levels/Paragraph'
 
-export default class App extends Component {
+export default class Searcher extends Component {
   /* * * * * * * * * * * * * * * * *
    *
    * CONSTRUCTOR
@@ -13,7 +17,7 @@ export default class App extends Component {
    * * * * * * * * * * * * * * * * */
   constructor () {
     super()
-    this.c = 'lblb-some-app'
+    this.c = 'lblb-searcher'
     this.state = {
       loading_sheet: false,
       error_sheet: null,
@@ -104,14 +108,27 @@ export default class App extends Component {
 
     /* Display component */
     return <div className={classes.join(' ')}>
-      App is ready.<br />
-      - fill spreadsheet field in config.js<br />
-      - display it's content via state.data_sheet
+      <Grid width={12} gutterSize={[2, 1.5, 1]}>
+        <Slot className={`${c}__header`} width={[4, 12, 12]}>
+          <PageTitle>Ceux-là qui sont aux JO</PageTitle>
+          <Paragraph>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Aenean at ultricies ligula. Aliquam in consectetur purus. Nullam euismod pulvinar neque, vel condimentum metus dignissim imperdiet. Praesent et maximus elit, congue rutrum odio. Vivamus a volutpat leo. Aliquam nulla eros, ullamcorper at lectus ut, aliquet scelerisque tellus. Ut hendrerit dictum ante, eget suscipit odio tempus eget. Donec nisl quam, interdum in accumsan sit amet, feugiat ac turpis. Sed ac dignissim dui, ut placerat diam.</Paragraph>
+          <ArticleMeta inline publishedOn='02/09/2019 17:13' updatedOn='03/09/2019 10:36' authors={[
+            { name: 'Jean-Sol Partre', role: '', link: 'www.liberation.fr' },
+            { name: 'Méxémé', role: 'Production', link: 'lol.com' }
+          ]} />  
+        </Slot>
+        <Slot className={`${c}__content`} width={[8, 12, 12]}>
+          <div className={`${c}__filters`}><Paragraph>Filters | Search</Paragraph></div>
+          <div className={`${c}__entries`}>{
+            new Array(287).fill(0).map((e, i) => <div className={`${c}__entry`} key={i} />)
+          }</div>
+        </Slot>
+      </Grid>
       <div className='lblb-default-apps-footer'>
         <ShareArticle short iconsOnly tweet={props.meta.tweet} url={props.meta.url} />
         <ArticleMeta publishedOn='02/09/2019 17:13' updatedOn='03/09/2019 10:36' authors={[
           { name: 'Jean-Sol Partre', role: '', link: 'www.liberation.fr' },
-          { name: 'Maxime Fabas', role: 'Production', link: 'lol.com' }
+          { name: 'Méxémé', role: 'Production', link: 'lol.com' }
         ]} />
         <LibeLaboLogo target='blank' />
       </div>

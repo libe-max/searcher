@@ -1,25 +1,25 @@
 module.exports = {
   meta: {
     author: 'Maxime Fabas',
-    title: 'Libé apps template',
+    title: 'Un moteur de recherche',
     url: '',
     description: '',
     image: '',
-    xiti_id: 'test',
+    xiti_id: 'searcher',
     tweet: 'Some tweet text'
   },
   tracking: {
     active: false,
-    format: 'libe-apps-template',
-    article: 'libe-apps-template'
+    format: 'searcher',
+    article: 'searcher'
   },
   show_header: true,
   statics_url: process.env.NODE_ENV === 'production'
     ? 'https://www.liberation.fr/apps/static'
-    : 'http://localhost:3003',
+    : 'http://10.14.40.57:3003',
   api_url: process.env.NODE_ENV === 'production'
     ? 'https://libe-labo-2.site/api'
-    : 'http://localhost:3004/api',
-  stylesheet: 'libe-apps-template.css', // The name of the css file hosted at ${statics_url}/styles/apps/
+    : 'http://10.14.40.57:3004/api',
+  stylesheet: 'searcher.css', // The name of the css file hosted at ${statics_url}/styles/apps/
   spreadsheet: undefined // The spreadsheet providing data to the app
 }
