@@ -16,10 +16,10 @@ module.exports = {
   show_header: true,
   statics_url: process.env.NODE_ENV === 'production'
     ? 'https://www.liberation.fr/apps/static'
-    : 'http://10.14.40.57:3003',
+    : 'http://localhost:3003',
   api_url: process.env.NODE_ENV === 'production'
     ? 'https://libe-labo-2.site/api'
-    : 'http://10.14.40.57:3004/api',
+    : 'http://localhost:3004/api',
   stylesheet: 'searcher.css', // The name of the css file hosted at ${statics_url}/styles/apps/
-  spreadsheet: undefined // The spreadsheet providing data to the app
+  spreadsheet: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSi6Qe-h663Rgxb_eZfU6rKQbpYizapdCXo3OlrwS0nBhL8KgLXQJhksNjT98qb7HNNiXFqJ1wnfOxC/pub?gid=339818112&single=true&output=tsv'
 }

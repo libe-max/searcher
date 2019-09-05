@@ -6,8 +6,10 @@ import LibeLaboLogo from 'libe-components/lib/blocks/LibeLaboLogo'
 import ArticleMeta from 'libe-components/lib/blocks/ArticleMeta'
 import Grid from 'libe-components/lib/layouts/Grid'
 import Slot from 'libe-components/lib/layouts/Slot'
+import Slug from 'libe-components/lib/text-levels/Slug'
 import PageTitle from 'libe-components/lib/text-levels/PageTitle'
 import Paragraph from 'libe-components/lib/text-levels/Paragraph'
+import parseTsv from './parse-tsv'
 
 export default class Searcher extends Component {
   /* * * * * * * * * * * * * * * * *
@@ -19,12 +21,13 @@ export default class Searcher extends Component {
     super()
     this.c = 'lblb-searcher'
     this.state = {
-      loading_sheet: false,
+      loading_sheet: true,
       error_sheet: null,
-      data_sheet: []
+      data_sheet: {}
     }
     this.fetchSheet = this.fetchSheet.bind(this)
     this.fetchCredentials = this.fetchCredentials.bind(this)
+    this.setUpFiltersAndEntries = this.setUpFiltersAndEntries.bind(this)
   }
 
   /* * * * * * * * * * * * * * * * *
@@ -34,7 +37,8 @@ export default class Searcher extends Component {
    * * * * * * * * * * * * * * * * */
   componentDidMount () {
     this.fetchCredentials()
-    if (this.props.spreadsheet) this.fetchSheet()
+    if (this.props.spreadsheet) return this.fetchSheet()
+    return this.setState({ loading_sheet: false })
   }
 
   /* * * * * * * * * * * * * * * * *
@@ -72,7 +76,9 @@ export default class Searcher extends Component {
       const reach = await window.fetch(this.props.spreadsheet)
       if (!reach.ok) throw reach
       const data = await reach.text()
-      const parsedData = data // Parse sheet here
+      const [[page], signatures, _filters, _entries] = parseTsv(data, [8, 3, 4, 27])
+      const { filters, entries } = this.setUpFiltersAndEntries(_filters, _entries)
+      const parsedData = { page, signatures, filters, entries }
       this.setState({ loading_sheet: false, error_sheet: null, data_sheet: parsedData })
       return data
     } catch (error) {
@@ -91,11 +97,36 @@ export default class Searcher extends Component {
 
   /* * * * * * * * * * * * * * * * *
    *
+   * SET UP FILTERS AND ENTRIES
+   *
+   * * * * * * * * * * * * * * * * */
+  setUpFiltersAndEntries (_filters, _entries) {
+    const entries = _entries.map(_entry => ({ ..._entry }))
+    const filters = _filters.map(_filter => ({ ..._filter }))
+    filters.forEach(filter => {
+      const { splitter, column_name: col } = filter
+      if (splitter) entries.forEach(entry => entry[col] = entry[col].split(splitter).map(e => e.trim()))
+      else entries.forEach(entry => entry[col] = [entry[col]])
+      let options = []
+      entries.forEach(entry => options.push(...entry[col]))
+      options = [...new Set(options)]
+
+      // [WIP] inside each entry, duplicate and prefix with '_display_' the corresponding filter prop (entry.gender => entry._display_gender)
+      // and transform the raw value into a displayable value eg '91' => 'Essonne (91)'
+      
+      filter.options = options
+    })
+    return { filters, entries }
+  }
+
+  /* * * * * * * * * * * * * * * * *
+   *
    * RENDER
    *
    * * * * * * * * * * * * * * * * */
   render () {
     const { c, state, props } = this
+    const { page, signatures, filters, entries } = state.data_sheet
 
     /* Assign classes */
     const classes = [c]
@@ -108,28 +139,25 @@ export default class Searcher extends Component {
 
     /* Display component */
     return <div className={classes.join(' ')}>
-      <Grid width={12} gutterSize={[2, 1.5, 1]}>
-        <Slot className={`${c}__header`} width={[4, 12, 12]}>
-          <PageTitle>Ceux-là qui sont aux JO</PageTitle>
-          <Paragraph>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Aenean at ultricies ligula. Aliquam in consectetur purus. Nullam euismod pulvinar neque, vel condimentum metus dignissim imperdiet. Praesent et maximus elit, congue rutrum odio. Vivamus a volutpat leo. Aliquam nulla eros, ullamcorper at lectus ut, aliquet scelerisque tellus. Ut hendrerit dictum ante, eget suscipit odio tempus eget. Donec nisl quam, interdum in accumsan sit amet, feugiat ac turpis. Sed ac dignissim dui, ut placerat diam.</Paragraph>
-          <ArticleMeta inline publishedOn='02/09/2019 17:13' updatedOn='03/09/2019 10:36' authors={[
-            { name: 'Jean-Sol Partre', role: '', link: 'www.liberation.fr' },
-            { name: 'Méxémé', role: 'Production', link: 'lol.com' }
-          ]} />  
+      <Grid width={24} gutterSize={[2, 1.5, 1]}>
+        <Slot className={`${c}__header`} width={[8, 24, 24]}>
+          <Slug huge>{page.slug}</Slug>
+          <PageTitle>{page.big_title}</PageTitle>
+          <Paragraph>{page.paragraph}</Paragraph>
+          <ArticleMeta inline publishedOn={page.published_on} updatedOn={page.updated_on} authors={signatures} />
+          <ShareArticle short iconsOnly tweet={page.tweet} url={props.meta.url} />
+          <LibeLaboLogo target='blank' />
         </Slot>
-        <Slot className={`${c}__content`} width={[8, 12, 12]}>
+        <Slot className={`${c}__content`} width={[15, 24, 24]} offset={[1, 0, 0]}>
           <div className={`${c}__filters`}><Paragraph>Filters | Search</Paragraph></div>
           <div className={`${c}__entries`}>{
-            new Array(287).fill(0).map((e, i) => <div className={`${c}__entry`} key={i} />)
+            entries.map((entry, i) => <div className={`${c}__entry`} key={i} />)
           }</div>
         </Slot>
       </Grid>
       <div className='lblb-default-apps-footer'>
-        <ShareArticle short iconsOnly tweet={props.meta.tweet} url={props.meta.url} />
-        <ArticleMeta publishedOn='02/09/2019 17:13' updatedOn='03/09/2019 10:36' authors={[
-          { name: 'Jean-Sol Partre', role: '', link: 'www.liberation.fr' },
-          { name: 'Méxémé', role: 'Production', link: 'lol.com' }
-        ]} />
+        <ShareArticle short iconsOnly tweet={page.tweet} url={props.meta.url} />
+        <ArticleMeta publishedOn={page.published_on} updatedOn={page.updated_on} authors={signatures} />
         <LibeLaboLogo target='blank' />
       </div>
     </div>
