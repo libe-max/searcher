@@ -23,11 +23,30 @@ export default class Searcher extends Component {
     this.state = {
       loading_sheet: true,
       error_sheet: null,
-      data_sheet: {}
+      data_sheet: {},
+      sticky_nav_position: 'relative',
+      contentOffset: 0,
+      contentWidth: 0,
+      navHeight: 0,
+      filtersPadding: 0,
+      filtersHeight: 0
     }
     this.fetchSheet = this.fetchSheet.bind(this)
     this.fetchCredentials = this.fetchCredentials.bind(this)
     this.setUpFiltersAndEntries = this.setUpFiltersAndEntries.bind(this)
+    this.handleScroll = this.handleScroll.bind(this)
+    this.getElementsSizes = this.getElementsSizes.bind(this)
+    window.setTimeout(() => {
+      this.getElementsSizes()
+      this.handleScroll()
+    }, 500)
+    window.setInterval(() => {
+      this.getElementsSizes()
+      this.handleScroll()
+    }, 3000)
+    window.addEventListener('resize', this.getElementsSizes)
+    window.addEventListener('resize', this.handleScroll)
+    document.addEventListener('scroll', this.handleScroll)
   }
 
   /* * * * * * * * * * * * * * * * *
@@ -37,6 +56,8 @@ export default class Searcher extends Component {
    * * * * * * * * * * * * * * * * */
   componentDidMount () {
     this.fetchCredentials()
+    this.getElementsSizes()
+    this.handleScroll()
     if (this.props.spreadsheet) return this.fetchSheet()
     return this.setState({ loading_sheet: false })
   }
@@ -121,6 +142,57 @@ export default class Searcher extends Component {
 
   /* * * * * * * * * * * * * * * * *
    *
+   * HANDLE SCROLL
+   *
+   * * * * * * * * * * * * * * * * */
+  handleScroll () {
+    const scroll = window.pageYOffset || document.documentElement.scrollTop
+    const scrolled = scroll >= this.state.contentOffset
+    const navPosition = this.state.sticky_nav_position
+    if (scrolled && navPosition === 'relative') return this.setState({ sticky_nav_position: 'fixed' })
+    else if (!scrolled && navPosition === 'fixed') return this.setState({ sticky_nav_position: 'relative' })
+    else return
+  }
+
+  /* * * * * * * * * * * * * * * * *
+   *
+   * GET ELEMENTS SIZES
+   *
+   * * * * * * * * * * * * * * * * */
+  getElementsSizes (e) {
+    const $ = sel => document.querySelector(sel)
+    // Nav height
+    const $nav = $('nav.main-nav')
+    if (!$nav) return
+    const navHeight = $nav.offsetHeight
+    // Content offset
+    const $content = $('.lblb-searcher__content')
+    if (!$content) return
+    const scroll = window.pageYOffset || document.documentElement.scrollTop
+    const contentClientPositionY = $content.getBoundingClientRect().y
+    const contentOffset = scroll + contentClientPositionY - navHeight
+    const contentWidth = $content.offsetWidth
+    // Filters padding
+    const $filters = $('.lblb-searcher__filters')
+    if (!$filters) return
+    const strFiltersPadding = window.getComputedStyle($filters, null)
+      .getPropertyValue('padding')
+      .split(' ')[0]
+      .split('px')
+      .join('')
+    const filtersPadding = parseInt(strFiltersPadding, 10)
+    const filtersHeight = $filters.offsetHeight
+    this.setState({
+      contentOffset,
+      contentWidth,
+      navHeight,
+      filtersPadding,
+      filtersHeight
+    })
+  }
+
+  /* * * * * * * * * * * * * * * * *
+   *
    * RENDER
    *
    * * * * * * * * * * * * * * * * */
@@ -136,7 +208,6 @@ export default class Searcher extends Component {
     /* Load & errors */
     if (state.loading_sheet) return <div className={classes.join(' ')}><div className='lblb-default-apps-loader'><Loader /></div></div>
     if (state.error_sheet) return <div className={classes.join(' ')}><div className='lblb-default-apps-error'><LoadingError /></div></div>
-
     /* Display component */
     return <div className={classes.join(' ')}>
       <Grid width={24} gutterSize={[2, 1.5, 1]}>
@@ -149,8 +220,12 @@ export default class Searcher extends Component {
           <LibeLaboLogo target='blank' />
         </Slot>
         <Slot className={`${c}__content`} width={[15, 24, 24]} offset={[1, 0, 0]}>
-          <div className={`${c}__filters`}><Paragraph>Filters | Search</Paragraph></div>
-          <div className={`${c}__entries`}>{
+          <div className={`${c}__filters ${c}__filters_${state.sticky_nav_position}`}
+            style={{ top: state.navHeight, width: state.contentWidth - (state.filtersPadding * 2) }}>
+            <Paragraph>Filters | Search</Paragraph>
+          </div>
+          <div className={`${c}__entries`}
+            style={{ marginTop: state.sticky_nav_position === 'fixed' ? `${state.filtersHeight}px` : 0 }}>{
             entries.map((entry, i) => <div className={`${c}__entry`} key={i} />)
           }</div>
         </Slot>
