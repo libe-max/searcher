@@ -9,7 +9,9 @@ import Slot from 'libe-components/lib/layouts/Slot'
 import Slug from 'libe-components/lib/text-levels/Slug'
 import PageTitle from 'libe-components/lib/text-levels/PageTitle'
 import Paragraph from 'libe-components/lib/text-levels/Paragraph'
+import FiltersAndSearch from './FiltersAndSearch'
 import parseTsv from './parse-tsv'
+import setupFiltersAndEntries from './setup-filters-and-entries'
 
 export default class Searcher extends Component {
   /* * * * * * * * * * * * * * * * *
@@ -27,13 +29,12 @@ export default class Searcher extends Component {
       sticky_nav_position: 'relative',
       contentOffset: 0,
       contentWidth: 0,
+      contentHeight: 0,
       navHeight: 0,
-      filtersPadding: 0,
       filtersHeight: 0
     }
     this.fetchSheet = this.fetchSheet.bind(this)
     this.fetchCredentials = this.fetchCredentials.bind(this)
-    this.setUpFiltersAndEntries = this.setUpFiltersAndEntries.bind(this)
     this.handleScroll = this.handleScroll.bind(this)
     this.getElementsSizes = this.getElementsSizes.bind(this)
     window.setTimeout(() => {
@@ -43,7 +44,7 @@ export default class Searcher extends Component {
     window.setInterval(() => {
       this.getElementsSizes()
       this.handleScroll()
-    }, 3000)
+    }, 1000)
     window.addEventListener('resize', this.getElementsSizes)
     window.addEventListener('resize', this.handleScroll)
     document.addEventListener('scroll', this.handleScroll)
@@ -97,8 +98,8 @@ export default class Searcher extends Component {
       const reach = await window.fetch(this.props.spreadsheet)
       if (!reach.ok) throw reach
       const data = await reach.text()
-      const [[page], signatures, _filters, _entries] = parseTsv(data, [8, 3, 4, 27])
-      const { filters, entries } = this.setUpFiltersAndEntries(_filters, _entries)
+      const [[page], signatures, _filters, _entries] = parseTsv(data, [8, 3, 4, 25])
+      const { filters, entries } = setupFiltersAndEntries(_filters, _entries)
       const parsedData = { page, signatures, filters, entries }
       this.setState({ loading_sheet: false, error_sheet: null, data_sheet: parsedData })
       return data
@@ -118,39 +119,16 @@ export default class Searcher extends Component {
 
   /* * * * * * * * * * * * * * * * *
    *
-   * SET UP FILTERS AND ENTRIES
-   *
-   * * * * * * * * * * * * * * * * */
-  setUpFiltersAndEntries (_filters, _entries) {
-    const entries = _entries.map(_entry => ({ ..._entry }))
-    const filters = _filters.map(_filter => ({ ..._filter }))
-    filters.forEach(filter => {
-      const { splitter, column_name: col } = filter
-      if (splitter) entries.forEach(entry => entry[col] = entry[col].split(splitter).map(e => e.trim()))
-      else entries.forEach(entry => entry[col] = [entry[col]])
-      let options = []
-      entries.forEach(entry => options.push(...entry[col]))
-      options = [...new Set(options)]
-
-      // [WIP] inside each entry, duplicate and prefix with '_display_' the corresponding filter prop (entry.gender => entry._display_gender)
-      // and transform the raw value into a displayable value eg '91' => 'Essonne (91)'
-      
-      filter.options = options
-    })
-    return { filters, entries }
-  }
-
-  /* * * * * * * * * * * * * * * * *
-   *
    * HANDLE SCROLL
    *
    * * * * * * * * * * * * * * * * */
   handleScroll () {
+    const { contentOffset, contentHeight, filtersHeight } = this.state
     const scroll = window.pageYOffset || document.documentElement.scrollTop
-    const scrolled = scroll >= this.state.contentOffset
+    const shouldBeFixed = scroll >= contentOffset && scroll <= contentOffset + contentHeight - filtersHeight
     const navPosition = this.state.sticky_nav_position
-    if (scrolled && navPosition === 'relative') return this.setState({ sticky_nav_position: 'fixed' })
-    else if (!scrolled && navPosition === 'fixed') return this.setState({ sticky_nav_position: 'relative' })
+    if (shouldBeFixed && navPosition === 'relative') return this.setState({ sticky_nav_position: 'fixed' })
+    else if (!shouldBeFixed && navPosition === 'fixed') return this.setState({ sticky_nav_position: 'relative' })
     else return
   }
 
@@ -165,30 +143,26 @@ export default class Searcher extends Component {
     const $nav = $('nav.main-nav')
     if (!$nav) return
     const navHeight = $nav.offsetHeight
-    // Content offset
-    const $content = $('.lblb-searcher__content')
+    // Content offset, width and height
+    const $content = $(`.${this.c}__content > .lblb-slot__inner`)
     if (!$content) return
     const scroll = window.pageYOffset || document.documentElement.scrollTop
     const contentClientPositionY = $content.getBoundingClientRect().y
     const contentOffset = scroll + contentClientPositionY - navHeight
     const contentWidth = $content.offsetWidth
-    // Filters padding
-    const $filters = $('.lblb-searcher__filters')
+    const contentHeight = $content.offsetHeight
+    // Filters height
+    const $filters = $(`.${this.c}__filters-and-search`)
     if (!$filters) return
-    const strFiltersPadding = window.getComputedStyle($filters, null)
-      .getPropertyValue('padding')
-      .split(' ')[0]
-      .split('px')
-      .join('')
-    const filtersPadding = parseInt(strFiltersPadding, 10)
     const filtersHeight = $filters.offsetHeight
-    this.setState({
-      contentOffset,
-      contentWidth,
-      navHeight,
-      filtersPadding,
-      filtersHeight
-    })
+    // Decide if setState is necessary or not
+    const newState = {}
+    if (this.state.contentOffset !== contentOffset) newState.contentOffset = contentOffset
+    if (this.state.contentWidth !== contentWidth) newState.contentWidth = contentWidth
+    if (this.state.contentHeight !== contentHeight) newState.contentHeight = contentHeight
+    if (this.state.navHeight !== navHeight) newState.navHeight = navHeight
+    if (this.state.filtersHeight !== filtersHeight) newState.filtersHeight = filtersHeight
+    if (Object.keys(newState).length) this.setState(newState)
   }
 
   /* * * * * * * * * * * * * * * * *
@@ -208,6 +182,7 @@ export default class Searcher extends Component {
     /* Load & errors */
     if (state.loading_sheet) return <div className={classes.join(' ')}><div className='lblb-default-apps-loader'><Loader /></div></div>
     if (state.error_sheet) return <div className={classes.join(' ')}><div className='lblb-default-apps-error'><LoadingError /></div></div>
+
     /* Display component */
     return <div className={classes.join(' ')}>
       <Grid width={24} gutterSize={[2, 1.5, 1]}>
@@ -220,9 +195,9 @@ export default class Searcher extends Component {
           <LibeLaboLogo target='blank' />
         </Slot>
         <Slot className={`${c}__content`} width={[15, 24, 24]} offset={[1, 0, 0]}>
-          <div className={`${c}__filters ${c}__filters_${state.sticky_nav_position}`}
-            style={{ top: state.navHeight, width: state.contentWidth - (state.filtersPadding * 2) }}>
-            <Paragraph>Filters | Search</Paragraph>
+          <div className={`${c}__filters-and-search ${c}__filters-and-search_${state.sticky_nav_position}`}
+            style={{ top: state.navHeight, width: state.contentWidth }}>
+            <FiltersAndSearch rootClass={this.c} filters={filters} />
           </div>
           <div className={`${c}__entries`}
             style={{ marginTop: state.sticky_nav_position === 'fixed' ? `${state.filtersHeight}px` : 0 }}>{
