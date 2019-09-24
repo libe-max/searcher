@@ -12,6 +12,7 @@ import Paragraph from 'libe-components/lib/text-levels/Paragraph'
 import FiltersAndSearch from './FiltersAndSearch'
 import parseTsv from './parse-tsv'
 import setupFiltersAndEntries from './setup-filters-and-entries'
+import makeSearchable from './make-searchable'
 
 export default class Searcher extends Component {
   /* * * * * * * * * * * * * * * * *
@@ -31,12 +32,17 @@ export default class Searcher extends Component {
       contentWidth: 0,
       contentHeight: 0,
       navHeight: 0,
-      filtersHeight: 0
+      filtersHeight: 0,
+      active_filters: {},
+      search_value: ''
     }
     this.fetchSheet = this.fetchSheet.bind(this)
     this.fetchCredentials = this.fetchCredentials.bind(this)
     this.handleScroll = this.handleScroll.bind(this)
     this.getElementsSizes = this.getElementsSizes.bind(this)
+    this.setFilter = this.setFilter.bind(this)
+    this.cancelAllFilters = this.cancelAllFilters.bind(this)
+    this.setSearch = this.setSearch.bind(this)
     window.setTimeout(() => {
       this.getElementsSizes()
       this.handleScroll()
@@ -98,9 +104,10 @@ export default class Searcher extends Component {
       const reach = await window.fetch(this.props.spreadsheet)
       if (!reach.ok) throw reach
       const data = await reach.text()
-      const [[page], signatures, _filters, _entries] = parseTsv(data, [8, 3, 4, 25])
+      const [[page], signatures, _filters, _entries] = parseTsv(data, [8, 3, 4, 26])
       const { filters, entries } = setupFiltersAndEntries(_filters, _entries)
-      const parsedData = { page, signatures, filters, entries }
+      const searchableEntries = makeSearchable(entries, ['name', 'text', 'birthdate', ...filters.map(f => f.column_name)])
+      const parsedData = { page, signatures, filters, entries: searchableEntries }
       this.setState({ loading_sheet: false, error_sheet: null, data_sheet: parsedData })
       return data
     } catch (error) {
@@ -167,11 +174,48 @@ export default class Searcher extends Component {
 
   /* * * * * * * * * * * * * * * * *
    *
+   * SET FILTER
+   *
+   * * * * * * * * * * * * * * * * */
+  setFilter (filter, value) {
+    this.setState(({active_filters}) => {
+      return {
+        active_filters: {
+          ...active_filters,
+          [filter]: value
+        }
+      }
+    })
+  }
+
+  /* * * * * * * * * * * * * * * * *
+   *
+   * CANCELL ALL FILTERS
+   *
+   * * * * * * * * * * * * * * * * */
+  cancelAllFilters () {
+    if (Object.keys(this.state.active_filters).length) {
+      this.setState({ active_filters: {} })
+    }
+  }
+
+  /* * * * * * * * * * * * * * * * *
+   *
+   * SET SEARCH
+   *
+   * * * * * * * * * * * * * * * * */
+  setSearch (val) {
+    this.setState({ search_value: val })
+  }
+
+  /* * * * * * * * * * * * * * * * *
+   *
    * RENDER
    *
    * * * * * * * * * * * * * * * * */
   render () {
     const { c, state, props } = this
+    const { active_filters: activeFilters, search_value: searchValue } = state
     const { page, signatures, filters, entries } = state.data_sheet
 
     /* Assign classes */
@@ -182,6 +226,28 @@ export default class Searcher extends Component {
     /* Load & errors */
     if (state.loading_sheet) return <div className={classes.join(' ')}><div className='lblb-default-apps-loader'><Loader /></div></div>
     if (state.error_sheet) return <div className={classes.join(' ')}><div className='lblb-default-apps-error'><LoadingError /></div></div>
+
+    /* Inner logic */
+    const activeCategories = Object.keys(activeFilters)
+    const filteredEntries = entries.filter(entry => {
+      return activeCategories.every(category => {
+        const expectedValue = activeFilters[category]
+        const found = entry[category].some(pair => pair.value === expectedValue)
+        return found
+      })
+    })
+    const searchedEntries = filteredEntries.filter(entry => {
+      if (!searchValue) return true
+      const searchTerms = searchValue.split(' ').filter(e => e).map(term => {
+        return term.normalize('NFD')
+          .replace(/[\W|\u0300-\u036f]/g, ' ')
+          .toLowerCase()
+          .split(' ')
+          .filter(e => e)
+          .join('')
+      })
+      return searchTerms.every(term => entry.search.match(term))
+    })
 
     /* Display component */
     return <div className={classes.join(' ')}>
@@ -197,11 +263,20 @@ export default class Searcher extends Component {
         <Slot className={`${c}__content`} width={[15, 24, 24]} offset={[1, 0, 0]}>
           <div className={`${c}__filters-and-search ${c}__filters-and-search_${state.sticky_nav_position}`}
             style={{ top: state.navHeight, width: state.contentWidth }}>
-            <FiltersAndSearch rootClass={this.c} filters={filters} />
+            <FiltersAndSearch rootClass={this.c}
+              filters={filters}
+              activeFilters={activeFilters}
+              setFilter={this.setFilter}
+              setSearch={this.setSearch}
+              cancelAllFilters={this.cancelAllFilters} />
           </div>
           <div className={`${c}__entries`}
             style={{ marginTop: state.sticky_nav_position === 'fixed' ? `${state.filtersHeight}px` : 0 }}>{
-            entries.map((entry, i) => <div className={`${c}__entry`} key={i} />)
+            searchedEntries.filter(entry => entry.display === '1').map((entry, i) => {
+              return <div className={`${c}__entry`} key={i}>
+                <Paragraph>{entry.name}</Paragraph>
+              </div>
+            })
           }</div>
         </Slot>
       </Grid>

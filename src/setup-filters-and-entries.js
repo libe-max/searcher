@@ -2,8 +2,8 @@ import frenchCollectivities from './french-collectivities.json'
 
 export default (_filters, _entries) => {
   // Deep clone inputs
-  const entries = JSON.parse(JSON.stringify(_entries))
   const filters = JSON.parse(JSON.stringify(_filters))
+  const entries = JSON.parse(JSON.stringify(_entries)).filter(e => e.display === '1')
 
   // For each filter, list all possible option found in entries
   // and generate a displayable option according to filter.type
@@ -32,38 +32,42 @@ export default (_filters, _entries) => {
         entries.forEach(entry => { entry[col].forEach(opt => { opt.label = opt.value }) })
         break
       case 'gender':
-        filter.options.forEach(opt => { opt.label = opt.value === 'M' ? 'Homme' : 'Femme' })
+        filter.options.forEach(opt => {
+          if (opt.value === 'H' || opt.value === 'M') opt.label = 'Homme'
+          else if (opt.value === 'F') opt.label = 'Femme'
+        })
         entries.forEach(entry => {
           entry[col].forEach(opt => {
-            if (!opt.value.match(/[M|F]/)) console.error(`Invalid gender option value '${opt.value}'`, entry)
-            opt.label = opt.value === 'M' ? 'Homme' : 'Femme'
+            if (!opt.value.match(/[M|H|F]/)) console.error(`Invalid gender option value in column ${col} '${opt.value}'`, entry)
+            if (opt.value === 'H' || opt.value === 'M') opt.label = 'Homme'
+            else if (opt.value === 'F') opt.label = 'Femme'
           })
         })
         break
       case 'integer':
-      case 'integer-range':
         filter.options.forEach(opt => {
           opt.label = opt.value 
-          opt.value = parseInt(opt.value, 10)
+          opt.value = parseInt(opt.value, 10).toString()
         })
         entries.forEach(entry => {
           entry[col].forEach(opt => {
-            if (!Number.isInteger(parseFloat(opt.value))) console.error(`Invalid integer option value '${opt.value}'`, entry)
+            if (!Number.isInteger(parseFloat(opt.value))) console.error(`Invalid integer option value in column ${col} '${opt.value}'`, entry)
             opt.label = opt.value
-            opt.value = parseInt(opt.value, 10)
+            opt.value = parseInt(opt.value, 10).toString()
           })
         })
         break
       case 'french-departments':
         filter.options.forEach(opt => {
           const department = frenchCollectivities.departments.find(dept => dept.code === opt.value)
+          if (!department) return
           opt.label = department.name
-          opt.rank = parseInt(department.code, 10)
+          opt.rank = parseInt(department.code, 10).toString()
         })
         entries.forEach(entry => {
           entry[col].forEach(opt => {
             const department = frenchCollectivities.departments.find(dept => dept.code === opt.value)
-            if (!department) console.error(`Invalid french-department option value ${opt.value}`, entry)
+            if (!department) return console.error(`Invalid french-department option value in column ${col} ${opt.value}`, entry)
             opt.label = department.name
           })
         })

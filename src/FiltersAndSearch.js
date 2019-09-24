@@ -23,14 +23,16 @@ export default class FiltersAndSearch extends Component {
   constructor (props) {
     super()
     this.c = `${props.rootClass}-filters-and-search-block`
-    this.state = {
-      status: 'closed',
-      display_filter: null
-    }
+    this.state = { status: 'closed' }
+    this.dropdowns = []
     this.openFilters = this.openFilters.bind(this)
     this.openSearch = this.openSearch.bind(this)
     this.close = this.close.bind(this)
-    this.displayFilter = this.displayFilter.bind(this)
+    this.handleFilterChange = this.handleFilterChange.bind(this)
+    this.handleClearFilters = this.handleClearFilters.bind(this)
+    this.handleSearchInput = this.handleSearchInput.bind(this)
+    this.decideIfUpdateSearch = this.decideIfUpdateSearch.bind(this)
+    this.clearSearch = this.clearSearch.bind(this)
   }
 
   /* * * * * * * * * * * * * * * * *
@@ -39,32 +41,73 @@ export default class FiltersAndSearch extends Component {
    *
    * * * * * * * * * * * * * * * * */
   openFilters () {
-    if (this.state.status === 'filters') return
-    this.setState({
-      status: 'filters',
-      display_filter: null
-    })
+    return this.state.status === 'filters'
+      ? undefined
+      : this.setState({ status: 'filters' })
   }
   openSearch () {
-    if (this.state.status === 'search') return
-    this.setState({
-      status: 'search',
-      display_filter: null
-    })
+    return this.state.status === 'search'
+      ? undefined
+      : this.setState({ status: 'search' })
   }
   close () {
-    if (this.state.status === 'closed') return
-    this.setState({
-      status: 'closed',
-      display_filter: null
-    })
+    return this.state.status === 'closed'
+      ? undefined
+      : this.setState({ status: 'closed' })
   }
 
-  displayFilter (name) {
-    if (this.state.display_filter === name) return
-    this.setState({
-      display_filter: name
-    })
+  /* * * * * * * * * * * * * * * * *
+   *
+   * HANDLE FILTER CHANGE
+   *
+   * * * * * * * * * * * * * * * * */
+  handleFilterChange (filter, e) {
+    const newVal = e.target.value
+    this.close()
+    return this.props.setFilter(filter, newVal)
+  }
+
+  /* * * * * * * * * * * * * * * * *
+   *
+   * HANDLE CLEAR FILTER CHANGE
+   *
+   * * * * * * * * * * * * * * * * */
+  handleClearFilters () {
+    this.dropdowns.forEach(dropdown => { dropdown.value = 'unset' })
+    this.props.cancelAllFilters()
+  }
+
+  /* * * * * * * * * * * * * * * * *
+   *
+   * HANDLE SEARCH INPUT
+   *
+   * * * * * * * * * * * * * * * * */
+  handleSearchInput (e) {
+    this.handleClearFilters()
+    const val = e.target.value
+    window.setTimeout(() => this.decideIfUpdateSearch(val), 500)
+  }
+
+  /* * * * * * * * * * * * * * * * *
+   *
+   * DECIDE IF UPDATE SEARCH
+   *
+   * * * * * * * * * * * * * * * * */
+  decideIfUpdateSearch (val) {
+    if (val === this.searchField.value) {
+      this.props.setSearch(val)
+    }
+  }
+
+  /* * * * * * * * * * * * * * * * *
+   *
+   * CLEAR SEARCH
+   *
+   * * * * * * * * * * * * * * * * */
+  clearSearch () {
+    this.searchField.value = ''
+    this.props.setSearch('')
+    this.close()
   }
 
   /* * * * * * * * * * * * * * * * *
@@ -74,40 +117,49 @@ export default class FiltersAndSearch extends Component {
    * * * * * * * * * * * * * * * * */
   render () {
     const { c, state, props } = this
-    console.log(state)
+    const hasActiveFilters = Object.keys(props.activeFilters).length
     
     /* Assign classes */
     const classes = [c]
     classes.push(`${c}_${state.status}`)
+    if (hasActiveFilters) classes.push(`${c}_with-active-filters`)
 
     /* Display component */
+    this.dropdowns = []
     return <div className={classes.join(' ')}>
       <div className={`${c}__closed-header`}>
         <div className={`${c}__filters`}>
           <div className={`${c}__filters-button`}><button onClick={this.openFilters}><Paragraph>Filtrer</Paragraph></button></div>
-          <div className={`${c}__filters-reset`}><button><Paragraph>Annuler les filtres</Paragraph></button></div>
+          <div className={`${c}__filters-reset`}><button onClick={this.handleClearFilters}><Paragraph>Annuler les filtres</Paragraph></button></div>
         </div>
         <div className={`${c}__search`}><button onClick={this.openSearch}><Paragraph>Search</Paragraph></button></div>
       </div>
       <div className={`${c}__filters-block`}>
         <div className={`${c}__fliters-block-header`}><Paragraph>FILTERS</Paragraph><button onClick={this.close}>X</button></div>
-        <div className={`${c}__filters-category-block`}><Paragraph>{props.filters.map((filter, i) => {
-          return <button key={i} onClick={() => this.displayFilter(filter.column_name)}>
+        <div className={`${c}__filters-category-block`}>{props.filters.map((filter, i) => {
+          return <div className={`${c}__filters-category-select`} key={i}>
             <Paragraph>{filter.name}</Paragraph>
-          </button>
-        })}</Paragraph></div>
-        <div className={`${c}__filters-controls-block`}>{
-          props.filters
-            .filter(filter => filter.column_name === state.display_filter)
-            .map((filter, i) => {
-              return <div key={i} className={`${c}__filter-control-panel`}>
-                {filter.name} PANEL
-              </div>
-          })
-        }</div>
+            <select defaultValue='unset'
+              onChange={e => this.handleFilterChange(filter.column_name, e)}
+              ref={n => { if (n) this.dropdowns.push(n) }}>
+              <option value='unset' disabled>
+                Filtrer par {filter.name.toLowerCase()}
+              </option>
+              {filter.options.map((opt, j) => {
+                return <option key={j}
+                  value={opt.value}>
+                  {opt.label}
+                </option>
+              })}
+            </select>
+          </div>
+        })}</div>
       </div>
       <div className={`${c}__search-block`}>
-        <Paragraph huge>SEARCH BLOCK 🧐</Paragraph>
+        <input type='text'
+          ref={n => this.searchField = n}
+          onChange={this.handleSearchInput} />
+        <button onClick={this.clearSearch}>x</button>
       </div>
     </div>
   }
