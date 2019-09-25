@@ -1,6 +1,8 @@
 import React, { Component } from 'react'
+import config from './config'
 import PropTypes from 'prop-types'
-import Paragraph from 'libe-components/lib/text-levels/Paragraph'
+import Svg from 'libe-components/lib/primitives/Svg'
+import BlockTitle from 'libe-components/lib/text-levels/BlockTitle'
 
 /*
  *   Filters and search component
@@ -22,54 +24,38 @@ export default class FiltersAndSearch extends Component {
    * * * * * * * * * * * * * * * * */
   constructor (props) {
     super()
-    this.c = `${props.rootClass}-filters-and-search-block`
+    this.c = `${props.rootClass}-filters-wrapper`
     this.state = { status: 'closed' }
     this.dropdowns = []
-    this.openFilters = this.openFilters.bind(this)
-    this.openSearch = this.openSearch.bind(this)
-    this.close = this.close.bind(this)
-    this.handleFilterChange = this.handleFilterChange.bind(this)
-    this.handleClearFilters = this.handleClearFilters.bind(this)
+    this.toggleOpenFilters = this.toggleOpenFilters.bind(this)
     this.handleSearchInput = this.handleSearchInput.bind(this)
-    this.decideIfUpdateSearch = this.decideIfUpdateSearch.bind(this)
+    this.handleClearFilters = this.handleClearFilters.bind(this)
     this.clearSearch = this.clearSearch.bind(this)
+    this.close = this.close.bind(this)
   }
 
   /* * * * * * * * * * * * * * * * *
    *
-   * OPEN FILTERS, OPEN SEARCH AND CLOSE
+   * TOGGLE OPEN FILTERS
    *
    * * * * * * * * * * * * * * * * */
-  openFilters () {
-    return this.state.status === 'filters'
-      ? undefined
-      : this.setState({ status: 'filters' })
+  toggleOpenFilters () {
+    const filtersOpen = this.state.status === 'open-filters'
+    return this.setState({ status: filtersOpen ? 'closed' : 'open-filters' })
   }
-  openSearch () {
-    return this.state.status === 'search'
-      ? undefined
-      : this.setState({ status: 'search' })
-  }
+
+  /* * * * * * * * * * * * * * * * *
+   *
+   * TOGGLE OPEN
+   *
+   * * * * * * * * * * * * * * * * */
   close () {
-    return this.state.status === 'closed'
-      ? undefined
-      : this.setState({ status: 'closed' })
+    this.setState({ status: 'closed' })
   }
 
   /* * * * * * * * * * * * * * * * *
    *
-   * HANDLE FILTER CHANGE
-   *
-   * * * * * * * * * * * * * * * * */
-  handleFilterChange (filter, e) {
-    const newVal = e.target.value
-    this.close()
-    return this.props.setFilter(filter, newVal)
-  }
-
-  /* * * * * * * * * * * * * * * * *
-   *
-   * HANDLE CLEAR FILTER CHANGE
+   * HANDLE CLEAR FILTER
    *
    * * * * * * * * * * * * * * * * */
   handleClearFilters () {
@@ -85,7 +71,10 @@ export default class FiltersAndSearch extends Component {
   handleSearchInput (e) {
     this.handleClearFilters()
     const val = e.target.value
-    window.setTimeout(() => this.decideIfUpdateSearch(val), 500)
+    return window.setTimeout(
+      () => this.decideIfUpdateSearch(val),
+      200
+    )
   }
 
   /* * * * * * * * * * * * * * * * *
@@ -94,9 +83,9 @@ export default class FiltersAndSearch extends Component {
    *
    * * * * * * * * * * * * * * * * */
   decideIfUpdateSearch (val) {
-    if (val === this.searchField.value) {
-      this.props.setSearch(val)
-    }
+    return val === this.searchField.value
+      ? this.props.setSearch(val)
+      : undefined
   }
 
   /* * * * * * * * * * * * * * * * *
@@ -117,49 +106,74 @@ export default class FiltersAndSearch extends Component {
    * * * * * * * * * * * * * * * * */
   render () {
     const { c, state, props } = this
-    const hasActiveFilters = Object.keys(props.activeFilters).length
     
     /* Assign classes */
     const classes = [c]
-    classes.push(`${c}_${state.status}`)
-    if (hasActiveFilters) classes.push(`${c}_with-active-filters`)
+    if (state.status === 'open-filters') classes.push(`${c}_open-filters`)
+    else if (state.status === 'open-search') classes.push(`${c}_open-search`)
 
     /* Display component */
-    this.dropdowns = []
     return <div className={classes.join(' ')}>
-      <div className={`${c}__closed-header`}>
-        <div className={`${c}__filters`}>
-          <div className={`${c}__filters-button`}><button onClick={this.openFilters}><Paragraph>Filtrer</Paragraph></button></div>
-          <div className={`${c}__filters-reset`}><button onClick={this.handleClearFilters}><Paragraph>Annuler les filtres</Paragraph></button></div>
+      <div className={`${c}__search-block`}>
+        <div className={`${c}__search-title`}>
+          <BlockTitle>Rechercher</BlockTitle>
         </div>
-        <div className={`${c}__search`}><button onClick={this.openSearch}><Paragraph>Search</Paragraph></button></div>
+        <div className={`${c}__search-icon`}>
+          <Svg src={`${config.statics_url}/assets/magnifying-glass-icon_40.svg`} />
+        </div>
+        <div className={`${c}__search-field`}>
+          <input type='text'
+            placeholder='Some placeholder'
+            ref={n => this.searchField = n}
+            onChange={this.handleSearchInput} />
+        </div>
+        <div className={`${c}__search-close`}
+          onClick={this.clearSearch}>
+          <Svg src={`${config.statics_url}/assets/tilted-cross-icon_24.svg`} />
+        </div>
       </div>
       <div className={`${c}__filters-block`}>
-        <div className={`${c}__fliters-block-header`}><Paragraph>FILTERS</Paragraph><button onClick={this.close}>X</button></div>
-        <div className={`${c}__filters-category-block`}>{props.filters.map((filter, i) => {
-          return <div className={`${c}__filters-category-select`} key={i}>
-            <Paragraph>{filter.name}</Paragraph>
-            <select defaultValue='unset'
-              onChange={e => this.handleFilterChange(filter.column_name, e)}
-              ref={n => { if (n) this.dropdowns.push(n) }}>
-              <option value='unset' disabled>
-                Filtrer par {filter.name.toLowerCase()}
-              </option>
-              {filter.options.map((opt, j) => {
-                return <option key={j}
-                  value={opt.value}>
-                  {opt.label}
-                </option>
-              })}
-            </select>
-          </div>
-        })}</div>
+        <div className={`${c}__filters-title`}
+          onClick={this.toggleOpenFilters}>
+          <BlockTitle>Filtrer</BlockTitle>
+        </div>
+        <div className={`${c}__filters-close`}
+          onClick={this.close}>
+          <Svg src={`${config.statics_url}/assets/up-arrow-head-icon_24.svg`} />
+        </div>
+        <div className={`${c}__filters-dropdowns`}>{
+          props.filters.map(filter => <div className={`${c}__filter-dropdown`}
+            key={filter.column_name}>
+              <select defaultValue='unset'>
+                
+              </select>
+              <input ref={n => n ? this.dropdowns.push(n) : undefined} />
+            </div>
+
+
+            // return <div className={`${c}__filters-category-select`} key={i}>
+            //   <Paragraph>{filter.name}</Paragraph>
+            //   <select defaultValue='unset'
+            //     onChange={e => this.handleFilterChange(filter.column_name, e)}
+            //     ref={n => { if (n) this.dropdowns.push(n) }}>
+            //     <option value='unset' disabled>
+            //       Filtrer par {filter.name.toLowerCase()}
+            //     </option>
+            //     {filter.options.map((opt, j) => {
+            //       return <option key={j}
+            //         value={opt.value}>
+            //         {opt.label}
+            //       </option>
+            //     })}
+            //   </select>
+            // </div>
+          )
+        }</div>
       </div>
-      <div className={`${c}__search-block`}>
-        <input type='text'
-          ref={n => this.searchField = n}
-          onChange={this.handleSearchInput} />
-        <button onClick={this.clearSearch}>x</button>
+      <div className={`${c}__summary-block`}>
+        <div className={`${c}__summary-title`}>TITLE</div>
+        <div className={`${c}__summary-list`}>LIST</div>
+        <div className={`${c}__summary-cancel`}>CANCEL</div>
       </div>
     </div>
   }
