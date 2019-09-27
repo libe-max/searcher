@@ -1,0 +1,11 @@
+.lblb-searcher__entry[data-gender="Homme"] {
+  background: #D32421;
+}
+
+.lblb-searcher__entry[data-gender="Femme"] {
+  background: #008DCF;
+}
+
+.lblb-searcher__entry-name .lblb-annotation-title h5 {
+  color: #FFFFFF;
+}

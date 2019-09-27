@@ -9,6 +9,7 @@ import Slot from 'libe-components/lib/layouts/Slot'
 import Slug from 'libe-components/lib/text-levels/Slug'
 import PageTitle from 'libe-components/lib/text-levels/PageTitle'
 import Paragraph from 'libe-components/lib/text-levels/Paragraph'
+import AnnotationTitle from 'libe-components/lib/text-levels/AnnotationTitle'
 import FiltersAndSearch from './FiltersAndSearch'
 import parseTsv from './parse-tsv'
 import setupFiltersAndEntries from './setup-filters-and-entries'
@@ -34,7 +35,8 @@ export default class Searcher extends Component {
       navHeight: 0,
       filtersHeight: 0,
       active_filters: {},
-      search_value: ''
+      search_value: '',
+      opened_entry: null
     }
     this.fetchSheet = this.fetchSheet.bind(this)
     this.fetchCredentials = this.fetchCredentials.bind(this)
@@ -43,14 +45,15 @@ export default class Searcher extends Component {
     this.setFilter = this.setFilter.bind(this)
     this.cancelAllFilters = this.cancelAllFilters.bind(this)
     this.setSearch = this.setSearch.bind(this)
+    this.openEntry = this.openEntry.bind(this)
     window.setTimeout(() => {
       this.getElementsSizes()
       this.handleScroll()
     }, 500)
-    window.setInterval(() => {
+    window.setTimeout(() => {
       this.getElementsSizes()
       this.handleScroll()
-    }, 1000)
+    }, 2000)
     window.addEventListener('resize', this.getElementsSizes)
     window.addEventListener('resize', this.handleScroll)
     document.addEventListener('scroll', this.handleScroll)
@@ -104,7 +107,7 @@ export default class Searcher extends Component {
       const reach = await window.fetch(this.props.spreadsheet)
       if (!reach.ok) throw reach
       const data = await reach.text()
-      const [[page], signatures, _filters, _entries] = parseTsv(data, [8, 3, 4, 26])
+      const [[page], signatures, _filters, _entries] = parseTsv(data, [8, 3, 4, 27])
       const { filters, entries } = setupFiltersAndEntries(_filters, _entries)
       const searchableEntries = makeSearchable(entries, ['name', 'text', 'birthdate', ...filters.map(f => f.column_name)])
       const parsedData = { page, signatures, filters, entries: searchableEntries }
@@ -129,7 +132,12 @@ export default class Searcher extends Component {
    * HANDLE SCROLL
    *
    * * * * * * * * * * * * * * * * */
-  handleScroll () {
+  handleScroll (e) {
+    console.log(e)
+    if (e) {
+      e.preventDefault()
+      e.returnValue = false
+    }
     const { contentOffset, contentHeight, filtersHeight } = this.state
     const scroll = window.pageYOffset || document.documentElement.scrollTop
     const shouldBeFixed = scroll >= contentOffset && scroll <= contentOffset + contentHeight - filtersHeight
@@ -178,14 +186,16 @@ export default class Searcher extends Component {
    *
    * * * * * * * * * * * * * * * * */
   setFilter (filter, value) {
-    this.setState(({active_filters}) => {
-      return {
-        active_filters: {
-          ...active_filters,
-          [filter]: value
-        }
+    const newState = {
+      active_filters: {
+        ...this.state.active_filters,
+        [filter]: value
       }
-    })
+    }
+    if (value === '') {
+      delete newState.active_filters[filter]
+    }
+    this.setState(newState)
   }
 
   /* * * * * * * * * * * * * * * * *
@@ -206,6 +216,15 @@ export default class Searcher extends Component {
    * * * * * * * * * * * * * * * * */
   setSearch (val) {
     this.setState({ search_value: val })
+  }
+
+  /* * * * * * * * * * * * * * * * *
+   *
+   * OPEN ENTRY
+   *
+   * * * * * * * * * * * * * * * * */
+  openEntry (id) {
+    this.setState({ opened_entry: id })
   }
 
   /* * * * * * * * * * * * * * * * *
@@ -272,11 +291,35 @@ export default class Searcher extends Component {
           </div>
           <div className={`${c}__entries`}
             style={{ marginTop: state.sticky_nav_position === 'fixed' ? `${state.filtersHeight}px` : 0 }}>{
-            searchedEntries.filter(entry => entry.display === '1').map((entry, i) => {
-              return <div className={`${c}__entry`} key={i}>
-                <Paragraph>{entry.name}</Paragraph>
-              </div>
-            })
+            searchedEntries.length
+              ? searchedEntries.map((entry, i) => {
+                const dataAttributes = {}
+                Object.keys(entry).map(key => {
+                  const value = Array.isArray(entry[key])
+                    && entry[key].every(f => f.label !== undefined && f.value !== undefined)
+                    ? entry[key].map(pair => pair.label).join(',')
+                    : entry[key]
+                  dataAttributes[`data-${key.trim()}`] = value
+                  return value
+                })
+                const classes = [`${c}__entry`]
+                if (entry.id === state.opened_entry) classes.push(`${c}__entry_open`)
+                return <div className={classes.join(' ')}
+                  key={i}
+                  onClick={e => this.openEntry(entry.id)}
+                  {...dataAttributes}>
+                  <div className={`${c}__entry-icon`}>ICON</div>
+                  <div className={`${c}__entry-name`}>
+                    <AnnotationTitle big>{entry.name}</AnnotationTitle>
+                  </div>
+                  <div className={`${c}__entry-image`}
+                    style={{ backgroundImage: `url(${entry.image_url}` }} />
+                  <div className={`${c}__entry-detail`}>
+                    DETAIL !
+                  </div>
+                </div>
+              })
+              : <Paragraph>Aucun résultat ne correspond à votre recherche</Paragraph>
           }</div>
         </Slot>
       </Grid>

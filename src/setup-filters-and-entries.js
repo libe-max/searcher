@@ -23,7 +23,7 @@ export default (_filters, _entries) => {
     })
 
     // Give filter an unduplicated list of options
-    filter.options = [...new Set(values)].map(v => ({ value: v }))
+    filter.options = [...new Set(values)].sort().map(v => ({ value: v }))
 
     // Given the filter type, assiciate to each option.value a label inside each filter and entry
     switch (filter.type) {
@@ -61,7 +61,7 @@ export default (_filters, _entries) => {
         filter.options.forEach(opt => {
           const department = frenchCollectivities.departments.find(dept => dept.code === opt.value)
           if (!department) return
-          opt.label = department.name
+          opt.label = `${department.code} - ${department.name}`
           opt.rank = parseInt(department.code, 10).toString()
         })
         entries.forEach(entry => {

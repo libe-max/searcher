@@ -11,7 +11,6 @@ export default (entries, fields) => {
         .join('')
       searchStr.push(entryField)
     })
-    console.log(searchStr.join(''))
     return {
       ...entry,
       search: searchStr.join('')
