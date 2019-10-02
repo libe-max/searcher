@@ -6,6 +6,29 @@
   background: #008DCF;
 }
 
+.lblb-searcher__entry[data-gender="Mixte"] {
+  background: #DDDDDD;
+}
+
+.lblb-searcher__entry[data-gender="Homme"]
+  .lblb-searcher__entry-detail-id {
+    background: #D32421;
+}
+
+.lblb-searcher__entry[data-gender="Femme"]
+  .lblb-searcher__entry-detail-id {
+    background: #008DCF;
+}
+
+.lblb-searcher__entry[data-gender="Mixte"]
+  .lblb-searcher__entry-detail-id {
+    background: #DDDDDD;
+}
+
 .lblb-searcher__entry-name .lblb-annotation-title h5 {
+  color: #FFFFFF;
+}
+
+.lblb-searcher__entry-detail-name .lblb-annotation-title h5 {
   color: #FFFFFF;
 }

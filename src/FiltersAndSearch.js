@@ -99,8 +99,14 @@ export default class FiltersAndSearch extends Component {
    * * * * * * * * * * * * * * * * */
   handleSearchIconClick (e) {
     const searchOpen = this.state.status === 'open-search'
-    if (!searchOpen) this.setState({ status: 'open-search' })
-    console.log('then...')
+    if (!searchOpen) {
+      this.setState(
+        { status: 'open-search' },
+        () => this.searchField.focus()
+      )
+    } else {
+      this.searchField.focus()
+    }
   }
 
   /* * * * * * * * * * * * * * * * *
@@ -243,4 +249,3 @@ FiltersAndSearch.propTypes = {
 FiltersAndSearch.defaultProps = {
   prop: null
 }
-
