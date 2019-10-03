@@ -1,4 +1,6 @@
 import React, { Component } from 'react'
+import { Parser } from 'html-to-react'
+import LazyLoad from 'react-lazy-load'
 import Loader from 'libe-components/lib/blocks/Loader'
 import LoadingError from 'libe-components/lib/blocks/LoadingError'
 import ShareArticle from 'libe-components/lib/blocks/ShareArticle'
@@ -12,13 +14,13 @@ import Paragraph from 'libe-components/lib/text-levels/Paragraph'
 import AnnotationTitle from 'libe-components/lib/text-levels/AnnotationTitle'
 import Svg from 'libe-components/lib/primitives/Svg'
 import getClosestDomParent from 'libe-utils/get-closest-dom-parent'
-import FiltersAndSearch from './FiltersAndSearch'
-import FranceMap from './FranceMap'
-import Medals from './Medals'
-import AgeGauge from './AgeGauge'
-import parseTsv from './parse-tsv'
-import setupFiltersAndEntries from './setup-filters-and-entries'
-import makeSearchable from './make-searchable'
+import FiltersAndSearch from './components/FiltersAndSearch'
+import FranceMap from './components/FranceMap'
+import Medals from './components/Medals'
+import AgeGauge from './components/AgeGauge'
+import parseTsv from './utils/parse-tsv'
+import setupFiltersAndEntries from './utils/setup-filters-and-entries'
+import makeSearchable from './utils/make-searchable'
 
 export default class Searcher extends Component {
   /* * * * * * * * * * * * * * * * *
@@ -43,6 +45,7 @@ export default class Searcher extends Component {
       search_value: '',
       opened_entry: null
     }
+    this.h2r = new Parser()
     this.fetchSheet = this.fetchSheet.bind(this)
     this.fetchCredentials = this.fetchCredentials.bind(this)
     this.handleScroll = this.handleScroll.bind(this)
@@ -53,6 +56,7 @@ export default class Searcher extends Component {
     this.handleEntryClick = this.handleEntryClick.bind(this)
     this.openEntry = this.openEntry.bind(this)
     this.closeEntry = this.closeEntry.bind(this)
+    this.findNameFromId = this.findNameFromId.bind(this)
     window.setTimeout(() => {
       this.getElementsSizes()
       this.handleScroll()
@@ -257,6 +261,21 @@ export default class Searcher extends Component {
 
   /* * * * * * * * * * * * * * * * *
    *
+   * FIND NAME FROM ID
+   *
+   * * * * * * * * * * * * * * * * */
+  findNameFromId (id) {
+    const foundEntry = this.state.data_sheet.entries.find(entry => {
+      return entry.id === id
+    })
+    if (!foundEntry) return
+    return foundEntry.name
+  }
+
+  // [WIP] reset scroll in cards when openEntry
+
+  /* * * * * * * * * * * * * * * * *
+   *
    * RENDER
    *
    * * * * * * * * * * * * * * * * */
@@ -314,7 +333,7 @@ export default class Searcher extends Component {
         <Slot className={`${c}__header`} width={[8, 24, 24]}>
           <Slug huge>{page.slug}</Slug>
           <PageTitle small>{page.big_title}</PageTitle>
-          <Paragraph>{page.paragraph}</Paragraph>
+          <Paragraph>{this.h2r.parse(page.paragraph)}</Paragraph>
           <ArticleMeta inline publishedOn={page.published_on} updatedOn={page.updated_on} authors={signatures} />
           <ShareArticle short iconsOnly tweet={page.tweet} url={props.meta.url} />
           <LibeLaboLogo target='blank' />
@@ -362,8 +381,10 @@ export default class Searcher extends Component {
                   <div className={`${c}__entry-name`}>
                     <AnnotationTitle big>{entry.name}</AnnotationTitle>
                   </div>
-                  <div className={`${c}__entry-image`}
-                    style={{ backgroundImage: `url(${entry.image_url || './assets/no-picture.jpg'}` }} />
+                  <LazyLoad>
+                    <div className={`${c}__entry-image`}
+                      style={{ backgroundImage: `url(${entry.image_url}` }} />
+                  </LazyLoad>
                   <div className={`${c}__entry-detail`} style={{ top: headerHeight }}>
                     <div className={`${c}__entry-detail-outer`}
                       onClick={this.closeEntry} />
@@ -455,8 +476,21 @@ export default class Searcher extends Component {
                             </div>
                           </div>
                         </div>
-                        <div className={`${c}__entry-detail-text`}><Paragraph>{entry.text}</Paragraph></div>
-                        <div className={`${c}__entry-detail-teammates`}>teammates</div>
+                        <div className={`${c}__entry-detail-text`}><Paragraph>{this.h2r.parse(entry.text)}</Paragraph></div>
+                        {
+                          entry.related_ids
+                            ? <div className={`${c}__entry-detail-teammates`}>
+                              <Paragraph>Voir aussi : </Paragraph>
+                              {entry.related_ids.split(',').map(e => e.trim()).map(id => {
+                                return <span key={id}
+                                  className={`${c}__entry-deail-teammate`}
+                                  onClick={e => this.openEntry(id)}>
+                                  <Paragraph>{this.findNameFromId(id)}</Paragraph>
+                                </span>
+                              })}
+                            </div>
+                            : ''
+                        }
                       </div>
                     </div>
                   </div>
@@ -470,7 +504,6 @@ export default class Searcher extends Component {
         <ShareArticle short iconsOnly tweet={page.tweet} url={props.meta.url} />
         <ArticleMeta publishedOn={page.published_on} updatedOn={page.updated_on} authors={signatures} />
         <LibeLaboLogo target='blank' />
-        <Paragraph>Photos: AFP.Reuters.DR</Paragraph>
       </div>
     </div>
   }

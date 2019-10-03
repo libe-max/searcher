@@ -35,16 +35,10 @@ export default class AgeGauge extends Component {
     const classes = [c]
 
     /* Inner logic */
-    const ageRange = props.max - props.min
-    const ageDiff = props.age - props.min
+    const ageRange = props.max - props.min + .5
+    const ageDiff = props.age - props.min + .25
     const ageRatio = ageDiff / ageRange
-    const style = {
-      left: `${ageRatio * 100}%`,
-      position: 'absolute',
-      height: 20,
-      width: 2,
-      background: 'coral',
-    }
+    const style = { left: `${ageRatio * 100}%` }
 
     /* Display component */
     return <div className={classes.join(' ')}

@@ -4,10 +4,12 @@
   "private": true,
   "dependencies": {
     "cheerio": "^1.0.0-rc.3",
+    "html-to-react": "^1.4.2",
     "libe-components": "^0.7.7",
     "react": "^16.9.0",
     "react-dom": "^16.9.0",
     "react-helmet": "^5.2.1",
+    "react-lazy-load": "^3.0.13",
     "react-scripts": "^3.1.1",
     "whatwg-fetch": "^3.0.0"
   },

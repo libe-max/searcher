@@ -1,5 +1,5 @@
 import React, { Component } from 'react'
-import config from './config'
+import config from '../../config'
 import PropTypes from 'prop-types'
 import Svg from 'libe-components/lib/primitives/Svg'
 import Paragraph from 'libe-components/lib/text-levels/Paragraph'
