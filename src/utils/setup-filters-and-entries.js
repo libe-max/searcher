@@ -23,8 +23,12 @@ export default (_filters, _entries) => {
     })
 
     // Give filter an unduplicated list of options
-    filter.options = [...new Set(values)].sort().map(v => ({ value: v }))
-
+    filter.options = [...new Set(values)]
+      .map(v => Number.isNaN(parseFloat(v)) ? v : parseFloat(v))
+      .sort((a, b) => a - b)
+      .map(v => v.toString ? v.toString() : v)
+      .map(v => ({ value: v }))
+    
     // Given the filter type, assiciate to each option.value a label inside each filter and entry
     switch (filter.type) {
       case 'text':

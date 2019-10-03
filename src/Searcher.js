@@ -1,6 +1,6 @@
 import React, { Component } from 'react'
 import { Parser } from 'html-to-react'
-import LazyLoad from 'react-lazy-load'
+import moment from 'moment'
 import Loader from 'libe-components/lib/blocks/Loader'
 import LoadingError from 'libe-components/lib/blocks/LoadingError'
 import ShareArticle from 'libe-components/lib/blocks/ShareArticle'
@@ -296,7 +296,12 @@ export default class Searcher extends Component {
 
     /* Inner logic */
     const activeCategories = Object.keys(activeFilters)
-    const filteredEntries = entries.filter(entry => {
+    const sortedEntries = entries.sort((a, b) => {
+      const aDate = moment(a.qualified_on, 'DD/MM/YYYY')
+      const bDate = moment(b.qualified_on, 'DD/MM/YYYY')
+      return bDate - aDate
+    })
+    const filteredEntries = sortedEntries.filter(entry => {
       return activeCategories.every(category => {
         const expectedValue = activeFilters[category]
         const found = entry[category].some(pair => pair.value === expectedValue)
@@ -330,7 +335,7 @@ export default class Searcher extends Component {
     /* Display component */
     return <div className={classes.join(' ')}>
       <Grid width={24} gutterSize={[2, 1.5, 1]}>
-        <Slot className={`${c}__header`} width={[8, 24, 24]}>
+        <Slot className={`${c}__header`} width={[7, 24, 24]}>
           <Slug huge>{page.slug}</Slug>
           <PageTitle small>{page.big_title}</PageTitle>
           <Paragraph>{this.h2r.parse(page.paragraph)}</Paragraph>
@@ -338,7 +343,7 @@ export default class Searcher extends Component {
           <ShareArticle short iconsOnly tweet={page.tweet} url={props.meta.url} />
           <LibeLaboLogo target='blank' />
         </Slot>
-        <Slot className={`${c}__content`} width={[15, 24, 24]} offset={[1, 0, 0]}>
+        <Slot className={`${c}__content`} width={[16, 24, 24]} offset={[1, 0, 0]}>
           <div className={`${c}__filters-and-search ${c}__filters-and-search_${state.sticky_nav_position}`}
             style={{ top: state.navHeight, width: state.contentWidth }}>
             <FiltersAndSearch rootClass={this.c}
@@ -381,10 +386,8 @@ export default class Searcher extends Component {
                   <div className={`${c}__entry-name`}>
                     <AnnotationTitle big>{entry.name}</AnnotationTitle>
                   </div>
-                  <LazyLoad>
-                    <div className={`${c}__entry-image`}
-                      style={{ backgroundImage: `url(${entry.image_url}` }} />
-                  </LazyLoad>
+                  <div className={`${c}__entry-image`}
+                    style={{ backgroundImage: `url(${entry.image_url}` }} />
                   <div className={`${c}__entry-detail`} style={{ top: headerHeight }}>
                     <div className={`${c}__entry-detail-outer`}
                       onClick={this.closeEntry} />

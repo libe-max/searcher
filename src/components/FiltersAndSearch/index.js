@@ -170,7 +170,7 @@ export default class FiltersAndSearch extends Component {
         </div>
         <input type='text'
           className={`${c}__search-field`}
-          placeholder='Some placeholder'
+          placeholder='Un nom, une discipline, une épreuve...'
           ref={n => this.searchField = n}
           onChange={this.handleSearchInput} />
         <div className={`${c}__search-close`}
