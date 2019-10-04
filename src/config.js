@@ -1,17 +1,17 @@
 module.exports = {
   meta: {
-    author: 'Maxime Fabas',
-    title: 'Un moteur de recherche',
-    url: '',
-    description: '',
-    image: '',
-    xiti_id: 'searcher',
-    tweet: 'Some tweet text'
+    author: 'Clara Dealberto, Maxime Fabas, Benjamen Monnet',
+    title: 'Qui sont les Françaises et Français qualifiés pour les JO de Tokyo ?',
+    url: 'https://www.liberation.fr/apps/2019/10/qualifies-francais-jo-2020',
+    description: 'Jusqu’au début des Jeux olympiques de Tokyo, suivez la constitution de l’équipe de France olympique, au fur et à mesure de la qualification des athlètes dans les différents sports grâce à notre moteur de recherche.',
+    image: 'https://www.liberation.fr/apps/2019/10/qualifies-francais-jo-2020/social.jpg',
+    xiti_id: 'qualifies-france-jo-2020',
+    tweet: ''
   },
   tracking: {
     active: false,
     format: 'searcher',
-    article: 'searcher'
+    article: 'qualifies-francais-jo-2020'
   },
   show_header: true,
   statics_url: process.env.NODE_ENV === 'production'

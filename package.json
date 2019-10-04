@@ -2,6 +2,7 @@
   "name": "libe-apps-template",
   "version": "0.2.3",
   "private": true,
+  "homepage": "https://www.liberation.fr/apps/2019/10/qualifies-francais-jo-2020",
   "dependencies": {
     "cheerio": "^1.0.0-rc.3",
     "html-to-react": "^1.4.2",
