@@ -9,15 +9,11 @@ import ArticleMeta from 'libe-components/lib/blocks/ArticleMeta'
 import Grid from 'libe-components/lib/layouts/Grid'
 import Slot from 'libe-components/lib/layouts/Slot'
 import Slug from 'libe-components/lib/text-levels/Slug'
-import PageTitle from 'libe-components/lib/text-levels/PageTitle'
+import InterTitle from 'libe-components/lib/text-levels/InterTitle'
 import Paragraph from 'libe-components/lib/text-levels/Paragraph'
-import AnnotationTitle from 'libe-components/lib/text-levels/AnnotationTitle'
-import Svg from 'libe-components/lib/primitives/Svg'
 import getClosestDomParent from 'libe-utils/get-closest-dom-parent'
 import FiltersAndSearch from './components/FiltersAndSearch'
-import FranceMap from './components/FranceMap'
-import Medals from './components/Medals'
-import AgeGauge from './components/AgeGauge'
+import Entry from './components/Entry'
 import parseTsv from './utils/parse-tsv'
 import setupFiltersAndEntries from './utils/setup-filters-and-entries'
 import makeSearchable from './utils/make-searchable'
@@ -57,14 +53,12 @@ export default class Searcher extends Component {
     this.openEntry = this.openEntry.bind(this)
     this.closeEntry = this.closeEntry.bind(this)
     this.findNameFromId = this.findNameFromId.bind(this)
-    window.setTimeout(() => {
-      this.getElementsSizes()
-      this.handleScroll()
-    }, 500)
-    window.setTimeout(() => {
-      this.getElementsSizes()
-      this.handleScroll()
-    }, 2000)
+    this.resetEntriesScroll = this.resetEntriesScroll.bind(this)
+    this.cancelFiltersAndSearch = this.cancelFiltersAndSearch.bind(this)
+    window.setTimeout(() => { this.getElementsSizes(); this.handleScroll() }, 500)
+    window.setTimeout(() => { this.getElementsSizes(); this.handleScroll() }, 2000)
+    window.setTimeout(() => { this.getElementsSizes(); this.handleScroll() }, 5000)
+    window.setTimeout(() => { this.getElementsSizes(); this.handleScroll() }, 12000)
     window.addEventListener('resize', this.getElementsSizes)
     window.addEventListener('resize', this.handleScroll)
     document.addEventListener('scroll', this.handleScroll)
@@ -208,7 +202,11 @@ export default class Searcher extends Component {
     if (value === '') {
       delete newState.active_filters[filter]
     }
-    this.setState(newState)
+    this.setState(newState, () => {
+      this.resetEntriesScroll()
+      this.getElementsSizes()
+      this.handleScroll()
+    })
   }
 
   /* * * * * * * * * * * * * * * * *
@@ -218,7 +216,10 @@ export default class Searcher extends Component {
    * * * * * * * * * * * * * * * * */
   cancelAllFilters () {
     if (Object.keys(this.state.active_filters).length) {
-      this.setState({ active_filters: {} })
+      this.setState({ active_filters: {} }, () => {
+        this.getElementsSizes()
+        this.handleScroll()
+      })
     }
   }
 
@@ -228,7 +229,25 @@ export default class Searcher extends Component {
    *
    * * * * * * * * * * * * * * * * */
   setSearch (val) {
-    this.setState({ search_value: val })
+    this.setState(
+      { search_value: val },
+      () => {
+        this.resetEntriesScroll()
+        this.getElementsSizes()
+        this.handleScroll()
+      }
+    )
+  }
+
+  /* * * * * * * * * * * * * * * * *
+   *
+   * CANCELL FILTERS AND SEARCH
+   *
+   * * * * * * * * * * * * * * * * */
+  cancelFiltersAndSearch () {
+    this.filtersBlock.handleClearFilters()
+    this.filtersBlock.clearSearch()
+    return
   }
 
   /* * * * * * * * * * * * * * * * *
@@ -272,7 +291,17 @@ export default class Searcher extends Component {
     return foundEntry.name
   }
 
-  // [WIP] reset scroll in cards when openEntry
+  /* * * * * * * * * * * * * * * * *
+   *
+   * RESET ENTRIES SCROLL
+   *
+   * * * * * * * * * * * * * * * * */
+  resetEntriesScroll () {
+    const scrollValue = window.scrollY
+    const distanceToEntriesTop = document.querySelector(`.${this.c}__entries`).getBoundingClientRect().y
+    const newScrollY = scrollValue + distanceToEntriesTop - 100
+    return window.scrollTo(window.scrollX, newScrollY)
+  }
 
   /* * * * * * * * * * * * * * * * *
    *
@@ -336,8 +365,8 @@ export default class Searcher extends Component {
     return <div className={classes.join(' ')}>
       <Grid width={24} gutterSize={[2, 1.5, 1]}>
         <Slot className={`${c}__header`} width={[7, 24, 24]}>
-          <Slug huge>{page.slug}</Slug>
-          <PageTitle small>{page.big_title}</PageTitle>
+          <Slug big>{page.slug}</Slug>
+          <InterTitle level={1} small>{page.big_title}</InterTitle>
           <Paragraph>{this.h2r.parse(page.paragraph)}</Paragraph>
           <ArticleMeta inline publishedOn={page.published_on} updatedOn={page.updated_on} authors={signatures} />
           <ShareArticle short iconsOnly tweet={page.tweet} url={props.meta.url} />
@@ -346,7 +375,9 @@ export default class Searcher extends Component {
         <Slot className={`${c}__content`} width={[16, 24, 24]} offset={[1, 0, 0]}>
           <div className={`${c}__filters-and-search ${c}__filters-and-search_${state.sticky_nav_position}`}
             style={{ top: state.navHeight, width: state.contentWidth }}>
-            <FiltersAndSearch rootClass={this.c}
+            <FiltersAndSearch
+              ref={n => this.filtersBlock = n}
+              rootClass={this.c}
               filters={filters}
               activeFilters={activeFilters}
               setFilter={this.setFilter}
@@ -354,152 +385,29 @@ export default class Searcher extends Component {
               cancelAllFilters={this.cancelAllFilters} />
           </div>
           <div className={`${c}__entries`}
-            style={{ marginTop: state.sticky_nav_position === 'fixed' ? `${state.filtersHeight}px` : 0 }}>{
+            style={{
+              marginTop: state.sticky_nav_position === 'fixed'
+                ? `${state.filtersHeight}px`
+                : 0
+            }}>{
             searchedEntries.length
-              ? searchedEntries.map((entry, i) => {
-                const dataAttributes = {}
-                Object.keys(entry).map(key => {
-                  const value = Array.isArray(entry[key])
-                    && entry[key].every(f => f.label !== undefined && f.value !== undefined)
-                    ? entry[key].map(pair => pair.label).join(',')
-                    : entry[key]
-                  dataAttributes[`data-${key.trim()}`] = value
-                  return value
-                })
-                const classes = [`${c}__entry`]
-                if (entry.id === state.opened_entry) classes.push(`${c}__entry_open`)
-                if (entry.tyme === 'equipe') classes.push(`${c}__entry_team`)
-                if (!entry.participation_2008) classes.push(`${c}__entry_no-08`)
-                if (!entry.participation_2012) classes.push(`${c}__entry_no-12`)
-                if (!entry.participation_2016) classes.push(`${c}__entry_no-16`)
-                return <div className={classes.join(' ')}
-                  key={i}
-                  onClick={e => this.handleEntryClick(e, entry.id)}
-                  {...dataAttributes}>
-                  <div className={`${c}__entry-icon`}>{
-                    (() => {
-                      const iconName = entry.sport[0].label.normalize('NFD').replace(/[\W|\u0300-\u036f]/g, ' ').toLowerCase().split(' ').filter(e => e).join('')
-                      const iconUrl = `./assets/sports-icons/${iconName}.svg`
-                      return <Svg src={iconUrl} />
-                    })()
-                  }</div>
-                  <div className={`${c}__entry-name`}>
-                    <AnnotationTitle big>{entry.name}</AnnotationTitle>
-                  </div>
-                  <div className={`${c}__entry-image`}
-                    style={{ backgroundImage: `url(${entry.image_url}` }} />
-                  <div className={`${c}__entry-detail`} style={{ top: headerHeight }}>
-                    <div className={`${c}__entry-detail-outer`}
-                      onClick={this.closeEntry} />
-                    <div className={`${c}__entry-detail-inner`}>
-                      <div className={`${c}__entry-detail-close`}
-                        onClick={this.closeEntry}>
-                        <Svg src={`${assetsUrl}/tilted-cross-icon_24.svg`} />
-                      </div>
-                      <div className={`${c}__entry-detail-inner-scrollable`}>
-                        <div className={`${c}__entry-detail-id`}>
-                          <div className={`${c}__entry-detail-icon`}>{
-                            (() => {
-                              const iconName = entry.sport[0].label.normalize('NFD').replace(/[\W|\u0300-\u036f]/g, ' ').toLowerCase().split(' ').filter(e => e).join('')
-                              const iconUrl = `./assets/sports-icons/${iconName}.svg`
-                              return <Svg src={iconUrl} />
-                            })()
-                          }</div>
-                          <div className={`${c}__entry-detail-name`}><AnnotationTitle small>{entry.name}</AnnotationTitle></div>
-                          <div className={`${c}__entry-detail-image`}
-                            style={{ backgroundImage: `url(${entry.image_url || './assets/no-picture.jpg'}` }} />
-                        </div>
-                        <div className={`${c}__entry-detail-title ${c}__entry-detail-title_sm`}><AnnotationTitle huge>{entry.sport[0].label}</AnnotationTitle></div>
-                        <div className={`${c}__entry-detail-data`}>
-                          <div className={`${c}__entry-detail-title ${c}__entry-detail-title_lg`}><AnnotationTitle huge>{entry.sport[0].label}</AnnotationTitle></div>
-                          <div className={`${c}__entry-detail-left-col`}>{
-                            entry.club[0].value === '-'
-                                ? ''
-                                : <div className={`${c}__entry-detail-club`}>
-                                  <div className={`${c}__entry-detail-club-label`}><Paragraph small>Club</Paragraph></div>
-                                  <div className={`${c}__entry-detail-club-value`}><AnnotationTitle>{entry.club[0].label}</AnnotationTitle></div>
-                                </div>
-                            }{
-                            entry.department[0].value === '-'
-                              ? ''
-                              : <div className={`${c}__entry-detail-map`}>
-                                <FranceMap rootClass={this.c}
-                                  department={entry.department[0].value} />
-                              </div>
-                            }{
-                            entry.age[0].value === '-'
-                              ? ''
-                              : <div className={`${c}__entry-detail-age`}>
-                              <div className={`${c}__entry-detail-age-label`}><Paragraph small>Age</Paragraph></div>
-                              <div className={`${c}__entry-detail-age-value`}><AnnotationTitle>{entry.age[0].label} ans</AnnotationTitle></div>
-                              <div className={`${c}__entry-detail-age-gauge`}><AgeGauge rootClass={this.c} min={minAge} max={maxAge} age={parseInt(entry.age[0].value, 10)} /></div>
-                            </div>
-                          }</div>
-                          <div className={`${c}__entry-detail-right-col`}>
-                            <div className={`${c}__entry-detail-participations`}><Paragraph>{entry.participations[0].label} participations</Paragraph></div>
-                            <div className={`${c}__entry-detail-results`}>
-                              <div className={`${c}__entry-detail-results-row ${c}__entry-detail-results-row_head`}>
-                                <div className={`${c}__entry-detail-result ${c}__entry-detail-result_2008`}><AnnotationTitle>2008</AnnotationTitle></div>
-                                <div className={`${c}__entry-detail-result ${c}__entry-detail-result_2012`}><AnnotationTitle>2012</AnnotationTitle></div>
-                                <div className={`${c}__entry-detail-result ${c}__entry-detail-result_2016`}><AnnotationTitle>2016</AnnotationTitle></div>
-                              </div>
-                              <div className={`${c}__entry-detail-results-row`}>
-                                <div className={`${c}__entry-detail-result ${c}__entry-detail-result_2008 ${c}__entry-detail-result_gold`}>
-                                  <Medals rootClass={this.c} value={parseInt(entry.gold08, 10)} />
-                                </div>
-                                <div className={`${c}__entry-detail-result ${c}__entry-detail-result_2012 ${c}__entry-detail-result_gold`}>
-                                  <Medals rootClass={this.c} value={parseInt(entry.gold12, 10)} />
-                                </div>
-                                <div className={`${c}__entry-detail-result ${c}__entry-detail-result_2016 ${c}__entry-detail-result_gold`}>
-                                  <Medals rootClass={this.c} value={parseInt(entry.gold16, 10)} />
-                                </div>
-                              </div>
-                              <div className={`${c}__entry-detail-results-row`}>
-                                <div className={`${c}__entry-detail-result ${c}__entry-detail-result_2008 ${c}__entry-detail-result_silver`}>
-                                  <Medals rootClass={this.c} value={parseInt(entry.silver08, 10)} />
-                                </div>
-                                <div className={`${c}__entry-detail-result ${c}__entry-detail-result_2012 ${c}__entry-detail-result_silver`}>
-                                  <Medals rootClass={this.c} value={parseInt(entry.silver12, 10)} />
-                                </div>
-                                <div className={`${c}__entry-detail-result ${c}__entry-detail-result_2016 ${c}__entry-detail-result_silver`}>
-                                  <Medals rootClass={this.c} value={parseInt(entry.silver16, 10)} />
-                                </div>
-                              </div>
-                              <div className={`${c}__entry-detail-results-row`}>
-                                <div className={`${c}__entry-detail-result ${c}__entry-detail-result_2008 ${c}__entry-detail-result_bronze`}>
-                                  <Medals rootClass={this.c} value={parseInt(entry.bronze08, 10)} />
-                                </div>
-                                <div className={`${c}__entry-detail-result ${c}__entry-detail-result_2012 ${c}__entry-detail-result_bronze`}>
-                                  <Medals rootClass={this.c} value={parseInt(entry.bronze12, 10)} />
-                                </div>
-                                <div className={`${c}__entry-detail-result ${c}__entry-detail-result_2016 ${c}__entry-detail-result_bronze`}>
-                                  <Medals rootClass={this.c} value={parseInt(entry.bronze16, 10)} />
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                        <div className={`${c}__entry-detail-text`}><Paragraph>{this.h2r.parse(entry.text)}</Paragraph></div>
-                        {
-                          entry.related_ids
-                            ? <div className={`${c}__entry-detail-teammates`}>
-                              <Paragraph>Voir aussi : </Paragraph>
-                              {entry.related_ids.split(',').map(e => e.trim()).map(id => {
-                                return <span key={id}
-                                  className={`${c}__entry-deail-teammate`}
-                                  onClick={e => this.openEntry(id)}>
-                                  <Paragraph>{this.findNameFromId(id)}</Paragraph>
-                                </span>
-                              })}
-                            </div>
-                            : ''
-                        }
-                      </div>
-                    </div>
-                  </div>
-                </div>
+              ? searchedEntries.map(entry => {
+                return <Entry key={entry.id}
+                  openEntry={this.openEntry}
+                  closeEntry={this.closeEntry}
+                  cancelFiltersAndSearch={this.cancelFiltersAndSearch}
+                  findNameFromId={this.findNameFromId}
+                  isOpened={entry.id === state.opened_entry}
+                  rootClass={this.c}
+                  assetsUrl={assetsUrl}
+                  headerHeight={headerHeight}
+                  maxAge={maxAge}
+                  minAge={minAge}
+                  data={entry} />
               })
-              : <Paragraph>Aucun résultat ne correspond à votre recherche</Paragraph>
+              : <Paragraph>
+                Aucun résultat ne correspond à votre recherche
+              </Paragraph>
           }</div>
         </Slot>
       </Grid>
@@ -511,3 +419,136 @@ export default class Searcher extends Component {
     </div>
   }
 }
+
+
+
+
+
+/*
+return <div className={classes.join(' ')}
+  key={i}
+  onClick={e => this.handleEntryClick(e, entry.id)}
+  {...dataAttributes}>
+  <div className={`${c}__entry-icon`}>{
+    (() => {
+      const iconName = entry.sport[0].label.normalize('NFD').replace(/[\W|\u0300-\u036f]/g, ' ').toLowerCase().split(' ').filter(e => e).join('')
+      const iconUrl = `./assets/sports-icons/${iconName}.svg`
+      return <Svg src={iconUrl} />
+    })()
+  }</div>
+  <div className={`${c}__entry-name`}>
+    <AnnotationTitle big>{entry.name}</AnnotationTitle>
+  </div>
+  <div className={`${c}__entry-image`}
+    style={{ backgroundImage: `url(${entry.image_url}` }} />
+  <div className={`${c}__entry-detail`} style={{ top: headerHeight }}>
+    <div className={`${c}__entry-detail-outer`}
+      onClick={this.closeEntry} />
+    <div className={`${c}__entry-detail-inner`}>
+      <div className={`${c}__entry-detail-close`}
+        onClick={this.closeEntry}>
+        <Svg src={`${assetsUrl}/tilted-cross-icon_24.svg`} />
+      </div>
+      <div className={`${c}__entry-detail-inner-scrollable`}>
+        <div className={`${c}__entry-detail-id`}>
+          <div className={`${c}__entry-detail-icon`}>{
+            (() => {
+              const iconName = entry.sport[0].label.normalize('NFD').replace(/[\W|\u0300-\u036f]/g, ' ').toLowerCase().split(' ').filter(e => e).join('')
+              const iconUrl = `./assets/sports-icons/${iconName}.svg`
+              return <Svg src={iconUrl} />
+            })()
+          }</div>
+          <div className={`${c}__entry-detail-name`}><AnnotationTitle small>{entry.name}</AnnotationTitle></div>
+          <div className={`${c}__entry-detail-image`}
+            style={{ backgroundImage: `url(${entry.image_url || './assets/no-picture.jpg'}` }} />
+        </div>
+        <div className={`${c}__entry-detail-title ${c}__entry-detail-title_sm`}><AnnotationTitle huge>{entry.sport[0].label}</AnnotationTitle></div>
+        <div className={`${c}__entry-detail-data`}>
+          <div className={`${c}__entry-detail-title ${c}__entry-detail-title_lg`}><AnnotationTitle huge>{entry.sport[0].label}</AnnotationTitle></div>
+          <div className={`${c}__entry-detail-left-col`}>{
+            entry.club[0].value === '-'
+                ? ''
+                : <div className={`${c}__entry-detail-club`}>
+                  <div className={`${c}__entry-detail-club-label`}><Paragraph small>Club</Paragraph></div>
+                  <div className={`${c}__entry-detail-club-value`}><AnnotationTitle>{entry.club[0].label}</AnnotationTitle></div>
+                </div>
+            }{
+            entry.department[0].value === '-'
+              ? ''
+              : <div className={`${c}__entry-detail-map`}>
+                <FranceMap rootClass={this.c}
+                  department={entry.department[0].value} />
+              </div>
+            }{
+            entry.age[0].value === '-'
+              ? ''
+              : <div className={`${c}__entry-detail-age`}>
+              <div className={`${c}__entry-detail-age-label`}><Paragraph small>Age</Paragraph></div>
+              <div className={`${c}__entry-detail-age-value`}><AnnotationTitle>{entry.age[0].label} ans</AnnotationTitle></div>
+              <div className={`${c}__entry-detail-age-gauge`}><AgeGauge rootClass={this.c} min={minAge} max={maxAge} age={parseInt(entry.age[0].value, 10)} /></div>
+            </div>
+          }</div>
+          <div className={`${c}__entry-detail-right-col`}>
+            <div className={`${c}__entry-detail-participations`}><Paragraph>{entry.participations[0].label} participations</Paragraph></div>
+            <div className={`${c}__entry-detail-results`}>
+              <div className={`${c}__entry-detail-results-row ${c}__entry-detail-results-row_head`}>
+                <div className={`${c}__entry-detail-result ${c}__entry-detail-result_2008`}><AnnotationTitle>2008</AnnotationTitle></div>
+                <div className={`${c}__entry-detail-result ${c}__entry-detail-result_2012`}><AnnotationTitle>2012</AnnotationTitle></div>
+                <div className={`${c}__entry-detail-result ${c}__entry-detail-result_2016`}><AnnotationTitle>2016</AnnotationTitle></div>
+              </div>
+              <div className={`${c}__entry-detail-results-row`}>
+                <div className={`${c}__entry-detail-result ${c}__entry-detail-result_2008 ${c}__entry-detail-result_gold`}>
+                  <Medals rootClass={this.c} value={parseInt(entry.gold08, 10)} />
+                </div>
+                <div className={`${c}__entry-detail-result ${c}__entry-detail-result_2012 ${c}__entry-detail-result_gold`}>
+                  <Medals rootClass={this.c} value={parseInt(entry.gold12, 10)} />
+                </div>
+                <div className={`${c}__entry-detail-result ${c}__entry-detail-result_2016 ${c}__entry-detail-result_gold`}>
+                  <Medals rootClass={this.c} value={parseInt(entry.gold16, 10)} />
+                </div>
+              </div>
+              <div className={`${c}__entry-detail-results-row`}>
+                <div className={`${c}__entry-detail-result ${c}__entry-detail-result_2008 ${c}__entry-detail-result_silver`}>
+                  <Medals rootClass={this.c} value={parseInt(entry.silver08, 10)} />
+                </div>
+                <div className={`${c}__entry-detail-result ${c}__entry-detail-result_2012 ${c}__entry-detail-result_silver`}>
+                  <Medals rootClass={this.c} value={parseInt(entry.silver12, 10)} />
+                </div>
+                <div className={`${c}__entry-detail-result ${c}__entry-detail-result_2016 ${c}__entry-detail-result_silver`}>
+                  <Medals rootClass={this.c} value={parseInt(entry.silver16, 10)} />
+                </div>
+              </div>
+              <div className={`${c}__entry-detail-results-row`}>
+                <div className={`${c}__entry-detail-result ${c}__entry-detail-result_2008 ${c}__entry-detail-result_bronze`}>
+                  <Medals rootClass={this.c} value={parseInt(entry.bronze08, 10)} />
+                </div>
+                <div className={`${c}__entry-detail-result ${c}__entry-detail-result_2012 ${c}__entry-detail-result_bronze`}>
+                  <Medals rootClass={this.c} value={parseInt(entry.bronze12, 10)} />
+                </div>
+                <div className={`${c}__entry-detail-result ${c}__entry-detail-result_2016 ${c}__entry-detail-result_bronze`}>
+                  <Medals rootClass={this.c} value={parseInt(entry.bronze16, 10)} />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className={`${c}__entry-detail-text`}><Paragraph>{this.h2r.parse(entry.text)}</Paragraph></div>
+        {
+          entry.related_ids
+            ? <div className={`${c}__entry-detail-teammates`}>
+              <Paragraph>Voir aussi : </Paragraph>
+              {entry.related_ids.split(',').map(e => e.trim()).map(id => {
+                return <span key={id}
+                  className={`${c}__entry-deail-teammate`}
+                  onClick={e => this.openEntry(id)}>
+                  <Paragraph>{this.findNameFromId(id)}</Paragraph>
+                </span>
+              })}
+            </div>
+            : ''
+        }
+      </div>
+    </div>
+  </div>
+</div>
+*/
