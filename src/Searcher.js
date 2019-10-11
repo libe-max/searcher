@@ -300,7 +300,9 @@ export default class Searcher extends Component {
     const scrollValue = window.scrollY
     const distanceToEntriesTop = document.querySelector(`.${this.c}__entries`).getBoundingClientRect().y
     const newScrollY = scrollValue + distanceToEntriesTop - 100
-    return window.scrollTo(window.scrollX, newScrollY)
+    return newScrollY < window.scrollY
+      ? window.scrollTo(window.scrollX, newScrollY)
+      : undefined
   }
 
   /* * * * * * * * * * * * * * * * *
